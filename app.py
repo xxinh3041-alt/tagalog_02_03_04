@@ -34,7 +34,7 @@ st.markdown("""
 
     /* Vùng hiển thị kết quả đang ghép */
     .result-box {
-        background-color: white;
+        background-color: #eae59a;
         padding: 20px;
         border-radius: 18px;
         border: 2px solid #E5E7EB;
@@ -46,8 +46,8 @@ st.markdown("""
         box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
     }
     .result-text {
-        color: #1E1B4B;
-        font-size: 26px;
+        color: red;
+        font-size: 40px;
         font-weight: 800;
         text-align: center;
         margin: 0;
