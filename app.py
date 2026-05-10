@@ -4,149 +4,130 @@ import random
 import os
 import time
 
-# Cấu hình trang tối ưu cho thiết bị di động
-st.set_page_config(
-    page_title="Tagalog Master", 
-    page_icon="🇵🇭", 
-    layout="centered", # Giữ nội dung tập trung để dễ nhìn trên điện thoại
-    initial_sidebar_state="collapsed"
-)
+# --- CẤU HÌNH GIAO DIỆN MOBILE ---
+st.set_page_config(page_title="Tagalog Master", page_icon="🇵🇭", layout="centered")
 
-# Thêm CSS để các nút bấm trông đẹp và to hơn trên cảm ứng
 st.markdown("""
     <style>
+    /* Làm nút bấm to và dễ chạm trên điện thoại */
     div.stButton > button {
         width: 100%;
-        border-radius: 10px;
-        height: 3em;
-        background-color: #f0f2f6;
+        border-radius: 12px;
+        height: 3.5em;
+        font-size: 18px !important;
         font-weight: bold;
-        border: 1px solid #d1d5db;
+        margin-bottom: 10px;
+        border: 2px solid #4CAF50;
     }
-    .stProgress > div > div > div > div {
-        background-color: #4CAF50;
-    }
+    /* Tùy chỉnh thanh tiến độ màu xanh lá */
+    .stProgress > div > div > div > div { background-color: #4CAF50; }
+    /* Chỉnh cỡ chữ câu hỏi */
+    .question-box { font-size: 22px; font-weight: 600; color: #1E3A8A; background: #E0F2FE; padding: 20px; border-radius: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 1. HÀM LOAD DỮ LIỆU ---
+# --- 1. HÀM TẢI DỮ LIỆU ---
 @st.cache_data
 def load_data():
-    file_list = ["sach_Tagalog_02.xlsx", "sach_Tagalog_03.xlsx", "sach_Tagalog_04.xlsx"]
-    full_data = []
-    for file_path in file_list:
-        if os.path.exists(file_path):
+    files = ["sach_Tagalog_02.xlsx", "sach_Tagalog_03.xlsx", "sach_Tagalog_04.xlsx"]
+    all_rows = []
+    for f in files:
+        if os.path.exists(f):
             try:
-                excel_file = pd.ExcelFile(file_path)
-                book_label = file_path.replace('sach_', '').replace('.xlsx', '').upper()
-                for name in excel_file.sheet_names:
-                    if "Mục lục" in name or "Sheet" in name: continue
-                    df = pd.read_excel(file_path, sheet_name=name, engine='openpyxl')
+                xl = pd.ExcelFile(f)
+                book_name = f.split('_')[-1].split('.')[0] # Lấy "02", "03"...
+                for sheet in xl.sheet_names:
+                    if "Mục lục" in sheet or "Sheet" in sheet: continue
+                    df = pd.read_excel(f, sheet_name=sheet, engine='openpyxl')
                     if df.shape[1] >= 3:
                         df = df.iloc[:, [1, 2]]
                         df.columns = ['VN', 'TG']
                         df = df.dropna(subset=['TG'])
                         df['VN'] = df['VN'].ffill()
-                        df['Lesson'] = f"{book_label} - {name}"
-                        full_data.append(df)
+                        df['Lesson'] = f"Sách {book_name} - {sheet}"
+                        all_rows.append(df)
             except: continue
-    return pd.concat(full_data, ignore_index=True) if full_data else pd.DataFrame()
+    return pd.concat(all_rows, ignore_index=True) if all_rows else pd.DataFrame()
 
-df_all = load_data()
+df_main = load_data()
 
-# --- 2. QUẢN LÝ TRẠNG THÁI (SESSION STATE) ---
-if 'current_idx' not in st.session_state:
-    st.session_state.current_idx = 0
-if 'score' not in st.session_state:
-    st.session_state.score = 0
-if 'user_answer' not in st.session_state:
-    st.session_state.user_answer = []
-if 'start_time' not in st.session_state:
-    st.session_state.start_time = time.time()
-if 'lesson_pool' not in st.session_state:
-    st.session_state.lesson_pool = []
+# --- 2. KHỞI TẠO TRẠNG THÁI ---
+if 'current_idx' not in st.session_state: st.session_state.current_idx = 0
+if 'user_answer' not in st.session_state: st.session_state.user_answer = []
+if 'start_time' not in st.session_state: st.session_state.start_time = time.time()
+if 'lesson_pool' not in st.session_state: st.session_state.lesson_pool = []
 
 # --- 3. SIDEBAR CHỌN BÀI ---
-st.sidebar.title("🇵🇭 Cài đặt")
-all_lessons = sorted(df_all['Lesson'].unique())
-selected_lesson = st.sidebar.selectbox("Chọn bài học", all_lessons)
+st.sidebar.header("📚 Lựa chọn bài học")
+lessons = sorted(df_main['Lesson'].unique())
+selected = st.sidebar.selectbox("Chọn bài:", lessons)
 
-# Nếu đổi bài học thì reset tiến độ
-if 'last_lesson' not in st.session_state or st.session_state.last_lesson != selected_lesson:
-    st.session_state.lesson_pool = df_all[df_all['Lesson'] == selected_lesson].to_dict('records')
-    random.shuffle(st.session_state.lesson_pool) # Trộn câu hỏi
+if 'last_selected' not in st.session_state or st.session_state.last_selected != selected:
+    st.session_state.lesson_pool = df_main[df_main['Lesson'] == selected].to_dict('records')
+    random.shuffle(st.session_state.lesson_pool)
     st.session_state.current_idx = 0
-    st.session_state.score = 0
-    st.session_state.last_lesson = selected_lesson
+    st.session_state.last_selected = selected
     st.session_state.user_answer = []
-    st.session_state.start_time = time.time()
+    st.session_state.new_q = True
 
-# --- 4. LOGIC CÂU HỎI ---
+# --- 4. LOGIC CHÍNH ---
 pool = st.session_state.lesson_pool
-total_q = len(pool)
-
-if st.session_state.current_idx < total_q:
-    current_item = pool[st.session_state.current_idx]
+if st.session_state.current_idx < len(pool):
+    item = pool[st.session_state.current_idx]
     
-    # Hiển thị Thanh tiến độ
-    progress = (st.session_state.current_idx) / total_q
+    # THANH TIẾN ĐỘ
+    progress = (st.session_state.current_idx) / len(pool)
     st.progress(progress)
-    st.write(f"Câu {st.session_state.current_idx + 1} / {total_q} | Đúng: {st.session_state.score}")
+    st.caption(f"Tiến độ: {st.session_state.current_idx}/{len(pool)} câu")
 
-    # Giao diện chính
-    st.info(f"Dịch sang Tagalog:\n ### {current_item['VN']}")
+    # HIỂN THỊ CÂU HỎI
+    st.markdown(f'<div class="question-box">{item["VN"]}</div>', unsafe_allow_html=True)
     
-    # Hiển thị câu đang ghép
-    answer_str = " ".join(st.session_state.user_answer)
-    st.subheader(f"👉 {answer_str if answer_str else '...'}")
+    # CÂU ĐANG GHÉP
+    st.write("---")
+    ans_text = " ".join(st.session_state.user_answer)
+    st.subheader(f"👉 {ans_text if ans_text else '...'}")
 
-    # Tạo Word Bank (Nút bấm to)
-    if 'words' not in st.session_state or st.session_state.new_q:
-        clean_tg = str(current_item['TG']).replace('!', '').replace('?', '').replace('.', '').replace(',', '').replace('"', '')
-        words = clean_tg.split()
-        # Thêm từ bẫy
-        distractors = random.sample(" ".join(df_all['TG'].astype(str)).split(), 3)
-        word_pool = list(set(words + distractors))
-        random.shuffle(word_pool)
-        st.session_state.words = word_pool
+    # TẠO WORD BANK
+    if st.session_state.new_q:
+        target = str(item['TG']).replace('!', '').replace('?', '').replace('.', '').replace(',', '').replace('"', '')
+        words = target.split()
+        distractors = random.sample(" ".join(df_main['TG'].astype(str)).split(), 2)
+        pool_words = list(set(words + distractors))
+        random.shuffle(pool_words)
+        st.session_state.words = pool_words
+        st.session_state.start_time = time.time()
         st.session_state.new_q = False
 
-    # Hiển thị các nút (3 cột trên mobile để nút đủ to)
-    cols = st.columns(3)
-    for i, word in enumerate(st.session_state.words):
-        if cols[i % 3].button(word, key=f"w_{i}"):
-            st.session_state.user_answer.append(word)
+    # HIỂN THỊ NÚT CHỌN TỪ (2 cột cho điện thoại dễ bấm)
+    cols = st.columns(2)
+    for i, w in enumerate(st.session_state.words):
+        if cols[i % 2].button(w, key=f"btn_{i}"):
+            st.session_state.user_answer.append(w)
             st.rerun()
 
-    # Nút chức năng
-    st.write("---")
+    # NÚT ĐIỀU KHIỂN
     c1, c2 = st.columns(2)
-    if c1.button("⬅️ Xóa từ cuối"):
-        if st.session_state.user_answer: 
-            st.session_state.user_answer.pop()
-            st.rerun()
-    if c2.button("🔄 Làm lại câu này"):
-        st.session_state.user_answer = []
-        st.rerun()
+    if c1.button("🔙 Xóa từ cuối", use_container_width=True):
+        if st.session_state.user_answer: st.session_state.user_answer.pop(); st.rerun()
+    if c2.button("🔄 Làm lại câu", use_container_width=True):
+        st.session_state.user_answer = []; st.rerun()
 
-    # TỰ ĐỘNG KIỂM TRA: Nếu số lượng từ ghép bằng số lượng từ của đáp án (hoặc hơn)
-    clean_target = str(current_item['TG']).lower().replace('!', '').replace('?', '').replace('.', '').replace(',', '').replace('"', '').strip()
-    if " ".join(st.session_state.user_answer).lower().strip() == clean_target:
+    # KIỂM TRA TỰ ĐỘNG
+    current_user_ans = " ".join(st.session_state.user_answer).lower().strip()
+    target_clean = str(item['TG']).lower().replace('!', '').replace('?', '').replace('.', '').replace(',', '').replace('"', '').strip()
+    
+    if current_user_ans == target_clean:
+        elapsed = time.time() - st.session_state.start_time
+        st.success(f"Chính xác! (Phản xạ: {elapsed:.2f}s)")
         st.balloons()
-        st.success(f"Đúng rồi! +1 điểm")
-        time.sleep(1.5) # Đợi 1.5 giây để bạn kịp nhìn đáp án
-        st.session_state.score += 1
+        time.sleep(1) # Chờ 1 giây rồi tự nhảy câu
         st.session_state.current_idx += 1
         st.session_state.user_answer = []
         st.session_state.new_q = True
         st.rerun()
-
 else:
-    st.balloons()
-    st.success(f"🎉 Chúc mừng! Bạn đã hoàn thành bài học.")
-    st.write(f"Kết quả: {st.session_state.score}/{total_q}")
-    if st.button("Học lại bài này"):
+    st.success("🎉 Bạn đã hoàn thành bài học này!")
+    if st.button("Học lại từ đầu"):
         st.session_state.current_idx = 0
-        st.session_state.score = 0
-        random.shuffle(st.session_state.lesson_pool)
         st.rerun()
