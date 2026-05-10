@@ -12,6 +12,7 @@
             --success: #10B981;
             --danger: #EF4444;
             --bg: #F8FAFC;
+            --wrong-bg: #FEE2E2; /* Màu đỏ nhạt cho khung khi sai */
         }
 
         body {
@@ -44,8 +45,23 @@
             background: white; border: 3px solid #6366F1; border-radius: 15px;
             min-height: 80px; display: flex; align-items: center; justify-content: center;
             padding: 15px; margin-bottom: 20px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s ease; /* Hiệu ứng mượt khi đổi màu */
         }
         #user-answer-text { color: #1E40AF; font-size: 28px; font-weight: 900; text-align: center; margin: 0; }
+
+        /* Khi sai: đổi nền đỏ nhạt, viền đỏ đậm và rung */
+        .result-box.wrong {
+            background-color: #FEE2E2 !important;
+            border-color: #EF4444 !important;
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
 
         /* Word Bank */
         .word-bank { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 30px; }
@@ -93,8 +109,8 @@
 
     <div id="question-text" class="vn-card">...</div>
 
-    <div class="result-box">
-        <p id="user-answer-text">...</p>
+    <div id="result-container" class="result-box">
+        <p id="user-answer-text" class="result-text">...</p>
     </div>
 
     <div id="word-bank" class="word-bank"></div>
@@ -161,8 +177,7 @@
     function changeLesson() {
         const selected = document.getElementById('lesson-select').value;
         lessonPool = allData.filter(d => d.lesson === selected);
-        // Trộn câu hỏi
-        lessonPool.sort(() => Math.random() - 0.5);
+        
         totalInLesson = lessonPool.length;
         instinctCount = 0;
         nextQuestion();
@@ -173,6 +188,7 @@
         if (lessonPool.length === 0) {
             document.getElementById('question-text').innerText = "🎉 HOÀN THÀNH!";
             document.getElementById('status').innerText = "Tất cả đã đạt bản năng!";
+            document.getElementById('word-bank').innerHTML = ""; // Xóa các nút cũ
             return;
         }
 
@@ -181,18 +197,16 @@
         
         // Tạo Word Bank
         let cleanTG = currentItem.tg.replace(/[!?.,"]/g, "");
-        let correctWords = cleanTG.split(/\s+/);
+        let correctWords = cleanTG.split(/\s+/).filter(w => w.trim().length > 0);
         
-        // Lấy 2 từ bẫy ngẫu nhiên
-        let allWords = allData.map(d => d.tg).join(" ").split(/\s+/);
-        let distractors = [allWords[Math.floor(Math.random()*allWords.length)], allWords[Math.floor(Math.random()*allWords.length)]];
-        
-        let combined = [...correctWords, ...distractors].sort(() => Math.random() - 0.5);
+  
+        let combined = [...correctWords].sort(() => Math.random() - 0.5);
         wordBankWithId = combined.map((w, i) => ({ id: i, text: w }));
 
         renderUI();
         speak(currentItem.tg);
         startTime = Date.now();
+        document.getElementById('message').innerText = ""; // Xóa thông báo cũ
     }
 
     // 4. Hiển thị Giao diện
@@ -229,11 +243,13 @@
     }
 
     function deleteLast() {
+        document.getElementById('result-container').classList.remove('wrong'); // Thêm dòng này
         userIndices.pop();
         renderUI();
     }
 
     function resetCurrent() {
+        document.getElementById('result-container').classList.remove('wrong'); // Thêm dòng này
         userIndices = [];
         renderUI();
     }
@@ -241,11 +257,19 @@
     // 5. Kiểm tra đáp án
     function checkAnswer(currentString) {
         let target = currentItem.tg.toLowerCase().replace(/[!?.,"]/g, "").trim();
+        let current = currentString.toLowerCase().trim();
+
+        // Nếu đã chọn đủ số từ mà vẫn không khớp đáp án
+        if (userIndices.length === wordBankWithId.length && current !== target) {
+            document.getElementById('result-container').classList.add('wrong');
+            document.getElementById('message').innerHTML = `<span style="color:red">❌ SAI THỨ TỰ!</span>`;
+        }
+
         if (currentString.toLowerCase().trim() === target) {
             let elapsed = (Date.now() - startTime) / 1000;
             const msg = document.getElementById('message');
             
-            if (elapsed <= 5.0) {
+            if (elapsed <= 10.0) {
                 msg.innerHTML = `<span style="color:var(--success)">⚡ BẢN NĂNG: ${elapsed.toFixed(2)}s</span>`;
                 lessonPool.shift(); // Xóa khỏi danh sách
             } else {
@@ -255,7 +279,7 @@
             
             // Đọc lại & chờ 1.5s nhảy câu
             speak(currentItem.tg);
-            setTimeout(nextQuestion, 1500);
+            setTimeout(nextQuestion, 500);
         }
     }
 
