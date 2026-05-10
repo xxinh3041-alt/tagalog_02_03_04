@@ -6,103 +6,96 @@ import time
 import streamlit.components.v1 as components
 
 # --- 1. CẤU HÌNH TRANG ---
-st.set_page_config(page_title="Tagalog Pro", page_icon="🇵🇭", layout="centered")
+st.set_page_config(page_title="Tagalog Instinct Pro", page_icon="⚡", layout="centered")
 
-# --- 2. CSS CHUYÊN NGHIỆP (PRO UI) ---
+# --- 2. CSS "ĐẶC TRỊ" KHOẢNG CÁCH VÀ CỠ CHỮ ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 
-    /* Tổng thể */
+    /* Font và Nền */
     html, body, [class*="View"] {
         font-family: 'Inter', sans-serif;
-        background-color: #F3F4F6 !important;
+        background-color: #F8FAFC !important;
     }
 
-    /* Khung câu hỏi (Việt) */
+    /* TRIỆT TIÊU KHOẢNG CÁCH GIỮA CÁC CỘT */
+    [data-testid="column"] {
+        padding: 0px 2px !important;  /* Giảm tối đa padding giữa các ô */
+        margin: 0px !important;
+    }
+    [data-testid="stHorizontalBlock"] {
+        gap: 4px !important; /* Thu hẹp khoảng cách giữa các nút */
+    }
+
+    /* THẺ CÂU HỎI TIẾNG VIỆT */
     .vn-card {
-        background: linear-gradient(135deg, #6366F1 0%, #4338CA 100%);
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
         color: white;
-        padding: 25px;
-        border-radius: 20px;
-        font-size: 22px;
-        font-weight: 600;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        border-left: 8px solid #A5B4FC;
+        padding: 20px;
+        border-radius: 15px;
+        font-size: 24px;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
-    /* Vùng hiển thị kết quả đang ghép */
+    /* CHỮ "CÒN LẠI BAO NHIÊU CÂU" */
+    .status-text {
+        font-size: 20px;
+        color: #EF4444; /* Màu đỏ nổi bật */
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+    /* VÙNG KẾT QUẢ CHỮ SIÊU TO */
     .result-box {
-        background-color: #eae59a;
-        padding: 20px;
-        border-radius: 18px;
-        border: 2px solid #E5E7EB;
-        min-height: 80px;
+        background-color: #FFFFFF;
+        padding: 15px;
+        border-radius: 12px;
+        border: 3px solid #6366F1;
+        min-height: 70px;
+        margin: 10px 0px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 25px;
-        box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
     }
     .result-text {
-        color: red;
-        font-size: 40px;
-        font-weight: 800;
+        color: #1E40AF;
+        font-size: 30px; /* Cỡ chữ kết quả rất to */
+        font-weight: 900;
         text-align: center;
-        margin: 0;
     }
 
-    /* Container cho Word Bank */
-    .word-bank-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: center;
-    }
-
-    /* Ép các cột Streamlit nằm ngang trên Mobile */
-    [data-testid="column"] {
-        flex: 1 1 auto !important;
-        min-width: 0px !important;
-    }
-
-    /* Nút bấm từ vựng */
+    /* NÚT BẤM CHỌN TỪ SIÊU TO */
     div.stButton > button {
         width: 100% !important;
-        background-color: white !important;
-        color: #374151 !important;
-        border: 2px solid #D1D5DB !important;
-        border-radius: 14px !important;
-        padding: 12px 5px !important;
-        font-size: 17px !important;
-        font-weight: 600 !important;
-        box-shadow: 0px 4px 0px #D1D5DB !important;
-        transition: all 0.1s ease;
+        background-color: #FFFFFF !important;
+        color: #1F2937 !important;
+        border: 2px solid #94A3B8 !important;
+        border-radius: 12px !important;
+        padding: 18px 5px !important; /* Tăng padding để nút cao hơn */
+        font-size: 22px !important;  /* Cỡ chữ trong nút to hơn */
+        font-weight: 700 !important;
+        box-shadow: 0px 4px 0px #CBD5E1 !important;
+        transition: none !important;
     }
     div.stButton > button:active {
         box-shadow: none !important;
-        transform: translateY(4px) !important;
-    }
-    div.stButton > button:hover {
-        border-color: #6366F1 !important;
-        color: #6366F1 !important;
+        transform: translateY(2px) !important;
     }
 
-    /* Thanh tiến độ Pro */
+    /* Thanh tiến độ */
     .stProgress > div > div > div > div {
-        background: linear-gradient(to right, #10B981, #34D399) !important;
-        border-radius: 10px;
-        height: 12px !important;
+        background-color: #10B981 !important;
+        height: 14px !important;
     }
 
     /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #1E1B4B !important;
-    }
-    [data-testid="stSidebar"] * {
-        color: white !important;
-    }
+    [data-testid="stSidebar"] { background-color: #0F172A !important; }
+    [data-testid="stSidebar"] * { color: #F1F5F9 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -139,7 +132,7 @@ def load_data():
         if os.path.exists(f):
             try:
                 xl = pd.ExcelFile(f)
-                book_num = f.replace('sach_Tagalog_', '').replace('.xlsx', '')
+                book_id = f.split('_')[-1].replace('.xlsx', '')
                 for sheet in xl.sheet_names:
                     if any(x in sheet for x in ["Mục lục", "Sheet"]): continue
                     df = pd.read_excel(xl, sheet_name=sheet, engine='openpyxl')
@@ -148,7 +141,7 @@ def load_data():
                         df.columns = ['VN', 'TG']
                         df = df.dropna(subset=['TG'])
                         df['VN'] = df['VN'].ffill()
-                        df['Lesson'] = f"Sách {book_num} • {sheet}"
+                        df['Lesson_ID'] = f"Sách {book_id} • {sheet}"
                         all_rows.append(df)
             except: continue
     return pd.concat(all_rows, ignore_index=True) if all_rows else pd.DataFrame()
@@ -156,30 +149,42 @@ def load_data():
 df_main = load_data()
 
 # --- 5. QUẢN LÝ TRẠNG THÁI ---
+if 'history' not in st.session_state: st.session_state.history = []
 if 'lesson_pool' not in st.session_state: st.session_state.lesson_pool = []
 if 'user_answer_indices' not in st.session_state: st.session_state.user_answer_indices = []
-if 'instinct_count' not in st.session_state: st.session_state.instinct_count = 0
 if 'active_q_text' not in st.session_state: st.session_state.active_q_text = ""
 
 # --- 6. SIDEBAR ---
-st.sidebar.markdown("# 🇵🇭 TAGALOG PRO")
-lessons = sorted(df_main['Lesson'].unique())
-selected = st.sidebar.selectbox("Lựa chọn bài học", lessons)
+st.sidebar.markdown("# 🏆 TRÌNH LUYỆN BẢN NĂNG")
+lessons = sorted(df_main['Lesson_ID'].unique())
+
+# Hiển thị lịch sử bài đã làm
+st.sidebar.subheader("Lịch sử bài học")
+for h in st.session_state.history:
+    st.sidebar.write(f"✅ {h}")
+
+selected = st.sidebar.selectbox("Chọn bài học:", lessons)
 
 if 'last_selected' not in st.session_state or st.session_state.last_selected != selected:
-    filtered = df_main[df_main['Lesson'] == selected].to_dict('records')
+    filtered = df_main[df_main['Lesson_ID'] == selected].to_dict('records')
     random.shuffle(filtered)
     st.session_state.lesson_pool = filtered
     st.session_state.total_in_lesson = len(filtered)
-    st.session_state.instinct_count = 0
     st.session_state.last_selected = selected
     st.session_state.active_q_text = ""
 
 # --- 7. LOGIC CHÍNH ---
 if st.session_state.lesson_pool:
     item = st.session_state.lesson_pool[0]
-    
-    # ID Sync
+    rem = len(st.session_state.lesson_pool)
+    total = st.session_state.total_in_lesson
+    done = total - rem
+
+    # HIỂN THỊ TIẾN ĐỘ RÕ RÀNG
+    st.markdown(f'<p class="status-text">Đã xong: {done}/{total} câu — CÒN LẠI: {rem} CÂU</p>', unsafe_allow_html=True)
+    st.progress(done / total)
+
+    # ĐỒNG BỘ CÂU HỎI
     if st.session_state.active_q_text != item['VN']:
         st.session_state.active_q_text = item['VN']
         target = str(item['TG']).replace('!', '').replace('?', '').replace('.', '').replace(',', '').replace('"', '')
@@ -190,21 +195,16 @@ if st.session_state.lesson_pool:
         st.session_state.words_with_id = list(enumerate(combined))
         st.session_state.user_answer_indices = []
         st.session_state.start_time = time.time()
-        speak_tagalog(item['TG']) # Đọc trước khi làm
+        speak_tagalog(item['TG'])
 
-    # UI: Header & Tiến độ
-    st.write(f"### {selected}")
-    st.progress(st.session_state.instinct_count / st.session_state.total_in_lesson)
-    st.caption(f"Đã hoàn thành: **{st.session_state.instinct_count}/{st.session_state.total_in_lesson}**")
-
-    # UI: Thẻ câu hỏi tiếng Việt
+    # CÂU HỎI
     st.markdown(f'<div class="vn-card">{item["VN"]}</div>', unsafe_allow_html=True)
     
-    # UI: Vùng hiển thị kết quả
+    # VÙNG KẾT QUẢ CHỌN
     current_string = " ".join([st.session_state.words_with_id[i][1] for i in st.session_state.user_answer_indices])
     st.markdown(f'<div class="result-box"><p class="result-text">{current_string if current_string else "..."}</p></div>', unsafe_allow_html=True)
 
-    # UI: Word Bank (Nút chọn từ)
+    # WORD BANK (Nút bấm to và sát nhau)
     cols = st.columns(3)
     for idx, (original_idx, word) in enumerate(st.session_state.words_with_id):
         if original_idx not in st.session_state.user_answer_indices:
@@ -212,7 +212,7 @@ if st.session_state.lesson_pool:
                 st.session_state.user_answer_indices.append(original_idx)
                 st.rerun()
 
-    # UI: Điều khiển (Dưới cùng)
+    # NÚT ĐIỀU KHIỂN
     st.write("")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -235,17 +235,19 @@ if st.session_state.lesson_pool:
         if elapsed <= 5.0:
             st.success(f"⚡ BẢN NĂNG: {elapsed:.2f}s")
             st.session_state.lesson_pool.pop(0)
-            st.session_state.instinct_count += 1
         else:
-            st.warning(f"🐢 CẦN NHANH HƠN ({elapsed:.2f}s)")
+            st.warning(f"🐢 CHẬM ({elapsed:.2f}s) - Sẽ làm lại!")
             slow_item = st.session_state.lesson_pool.pop(0)
             st.session_state.lesson_pool.append(slow_item)
         
-        time.sleep(2.0)
+        time.sleep(1.8)
         st.rerun()
 else:
+    if selected not in st.session_state.history:
+        st.session_state.history.append(selected)
     st.balloons()
-    st.success("🎉 TUYỆT VỜI! BẠN ĐÃ THUẦN THỤC TOÀN BỘ BÀI HỌC NÀY.")
-    if st.button("Học lại bài này", type="primary"):
+    st.success(f"🎉 HOÀN THÀNH BÀI: {selected}")
+    if st.button("Học lại từ đầu"):
+        st.session_state.history.remove(selected)
         del st.session_state.last_selected
         st.rerun()
