@@ -56,7 +56,7 @@
             animation: shake 0.3s ease-in-out;
         }
 
-        @keyframes shake {
+        @keyframes  shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-5px); }
             75% { transform: translateX(5px); }
@@ -85,7 +85,18 @@
 
         /* Sidebar giả (Chọn bài) */
         .selector-area { margin-bottom: 20px; width: 100%; }
-        select { width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #CBD5E1; font-size: 16px; }
+        
+
+        /* Tìm đến đoạn CSS của select và sửa lại */
+        select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid #E2E8F0;
+            font-size: 16px;
+            outline: none;
+            margin-bottom: 10px; /* Thêm khoảng cách giữa 2 ô */
+        }
 
         /* Thông báo */
         #message { margin-top: 15px; font-weight: 700; text-align: center; height: 30px; }
@@ -96,11 +107,25 @@
 <audio id="bg-music" style="display:none;"></audio>
 
 <div class="app-container">
+
+
+
     <div class="selector-area">
-        <select id="lesson-select" onchange="changeLesson()">
-            <option value="">-- Đang tải bài học... --</option>
+        <select id="book-select" onchange="updateLessonList()">
+            <option value="">-- Chọn Sách --</option>
+            <option value="Sách 02">Sách Tagalog 02</option>
+            <option value="Sách 03">Sách Tagalog 03</option>
+            <option value="Sách 04">Sách Tagalog 04</option>
+            <option value="Sách 50">Sách 50 Chủ Đề</option> </select>
+        </select>
+
+        <select id="lesson-select" onchange="changeLesson()" disabled>
+            <option value="">-- Chọn bài học --</option>
         </select>
     </div>
+
+
+
 
     <div class="header">
         <div id="status" class="status-text">Đang tải dữ liệu...</div>
@@ -141,14 +166,27 @@
     let instinctCount = 0;
     let totalInLesson = 0;
 
+   
+   
+
     // 1. Tải dữ liệu từ 3 file Excel
+   
     async function init() {
-        const files = ['sach_Tagalog_02.xlsx', 'sach_Tagalog_03.xlsx', 'sach_Tagalog_04.xlsx'];
-        const select = document.getElementById('lesson-select');
+        // Danh sách các file và nhãn tương ứng
+        const files = [
+            { name: 'sach_Tagalog_02.xlsx', label: 'Sách 02' },
+            { name: 'sach_Tagalog_03.xlsx', label: 'Sách 03' },
+            { name: 'sach_Tagalog_04.xlsx', label: 'Sách 04' },
+            { name: '50_chu_de.xlsx', label: 'Sách 50' }
+        ];
         
-        for (let file of files) {
+        for (let fileInfo of files) {
             try {
-                const response = await fetch(file);
+                // QUAN TRỌNG: Phải fetch(fileInfo.name) chứ không phải fetch(fileInfo)
+                const response = await fetch(fileInfo.name); 
+                
+                if (!response.ok) throw new Error("404");
+
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer);
                 
@@ -157,7 +195,8 @@
                     const sheet = workbook.Sheets[sheetName];
                     const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
                     
-                    let vnCol = 1, tgCol = 2; // Cột B và C
+                    let vnCol = 1; // Cột B
+                    let tgCol = 2; // Cột C
                     let lastVN = "";
                     
                     json.forEach((row, index) => {
@@ -165,20 +204,48 @@
                         let vn = row[vnCol] || lastVN;
                         lastVN = vn;
                         allData.push({
-                            vn: vn,
-                            tg: row[tgCol].toString(),
-                            lesson: `Sách ${file.match(/\d+/)[0]} • ${sheetName}`
+                            vn: vn.toString().trim(),
+                            tg: row[tgCol].toString().trim(),
+                            lesson: `${fileInfo.label} • ${sheetName}`
                         });
                     });
                 });
-            } catch (e) { console.error("Lỗi tải file:", file); }
+            } catch (e) { 
+                console.error("Lỗi tải file:", fileInfo.name, e); 
+            }
         }
-
-        // Cập nhật danh sách bài học
-        const lessons = [...new Set(allData.map(d => d.lesson))].sort();
-        select.innerHTML = lessons.map(l => `<option value="${l}">${l}</option>`).join('');
-        changeLesson();
+        document.getElementById('status').innerText = "Đã tải xong dữ liệu. Mời chọn sách!";
     }
+
+    // 2. Hàm mới: Cập nhật danh sách bài học dựa trên sách đã chọn
+    function updateLessonList() {
+        const selectedBook = document.getElementById('book-select').value;
+        const lessonSelect = document.getElementById('lesson-select');
+        
+        // Reset ô chọn bài
+        lessonSelect.innerHTML = '<option value="">-- Chọn bài học --</option>';
+        
+        if (selectedBook) {
+            // Lọc ra các bài học thuộc về sách đã chọn (VD: Sách 02)
+            const filteredLessons = [...new Set(allData
+                .filter(d => d.lesson.startsWith(selectedBook))
+                .map(d => d.lesson)
+            )].sort();
+
+            filteredLessons.forEach(l => {
+                const option = document.createElement('option');
+                option.value = l;
+                // Chỉ hiển thị tên bài (bỏ phần tên sách phía trước cho gọn)
+                option.textContent = l.split('•')[1].trim(); 
+                lessonSelect.appendChild(option);
+            });
+
+            lessonSelect.disabled = false;
+        } else {
+            lessonSelect.disabled = true;
+        }
+    }
+
 
     // 2. Chuyển bài học
     function changeLesson() {
@@ -284,8 +351,7 @@
                 lessonPool.push(lessonPool.shift()); // Đẩy xuống cuối
             }
             
-            // Đọc lại & chờ 1.5s nhảy câu
-            speak(currentItem.tg);
+            
             setTimeout(nextQuestion, 500);
         }
     }
