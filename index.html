@@ -93,6 +93,8 @@
 </head>
 <body>
 
+<audio id="bg-music" style="display:none;"></audio>
+
 <div class="app-container">
     <div class="selector-area">
         <select id="lesson-select" onchange="changeLesson()">
@@ -119,6 +121,11 @@
         <button class="ctrl-btn btn-delete" onclick="deleteLast()">🔙 Xóa</button>
         <button class="ctrl-btn btn-reset" onclick="resetCurrent()">🔄 Lại</button>
         <button class="ctrl-btn btn-speak" onclick="speakCurrent()">🔊 Nghe</button>
+    </div>
+
+    <div style="margin-top: 15px; text-align: center; background: #fff; padding: 10px; border-radius: 12px; border: 1px solid #ddd;">
+        <label style="font-weight: bold; color: #4F46E5;">🔊 Âm lượng nhạc:</label>
+        <input type="range" id="volume-control" min="0" max="1" step="0.05" value="0.1" style="width: 100%; cursor: pointer;">
     </div>
 
     <div id="message"></div>
@@ -297,6 +304,87 @@
     }
 
     function speakCurrent() { if(currentItem) speak(currentItem.tg); }
+
+    // --- CẤU HÌNH NHẠC NỀN ---
+    const playlist = [
+                "nhac/4k----------ost-----------------cover-by.mp3",
+        "nhac/always-with-me---spirited-away-----------itsumo-nando-demo.mp3",
+        "nhac/guitar--ch--tr-n-th-ng-n-m--11pkfuocpgq.mp3",
+        "nhac/guitar--ph--xa--xcbp9foq6wg.mp3",
+        "nhac/guitar--scraborough-fair--or98j4but-u.mp3",
+        "nhac/guitar--t-i-nh--em-c-ng-nh--t--l-m-th-a-m-n-n-i-c----n--ago3f7ajq-i.mp3",
+        "nhac/guitar--t-nh-kh-c-v-ng--jtuasvfd2yg.mp3",
+        "nhac/h-a-t-u----m---m-n-m-m--ph---umo6h77rz3u.mp3",
+        "nhac/h-a-t-u--999---a-h-ng--w-p-6ls3uag.mp3",
+        "nhac/h-a-t-u--b--c-ch-n-l--loi--vhxey-3a6je.mp3",
+        "nhac/h-a-t-u--khi-c----n-em-nh--ai--zyzovk-adna.mp3",
+        "nhac/h-a-t-u--l-i-l-m----qua---cu-c-ch-i-v--ngh-a--l7h7debsezi.mp3",
+        "nhac/h-a-t-u--m-a-th-y-tinh--sps7jiy9-nc.mp3",
+        "nhac/h-a-t-u--n--h-n-bi-t-ly---take-me-to-your-heart--v4l3vfklwwc.mp3",
+        "nhac/h-a-t-u--ng--i-t-nh-m-a---ng--kl4jmmttiko.mp3",
+        "nhac/h-a-t-u--ng-i-sao-hi-u-l-ng-em--cc6fw-obtp4.mp3",
+        "nhac/h-a-t-u--s--thanh-hoa--l4vpvxsbxrc.mp3",
+        "nhac/h-a-t-u--t-nh---n-c-i--knikz-vgttw.mp3",
+        "nhac/h-a-t-u--t-nh-nhi-n---splhdsc9dhw.mp3",
+        "nhac/h-a-t-u--t-nh-thi-n-thu--3xw8wwfjd-i.mp3",
+        "nhac/h-a-t-u--t-nh-x-a-ngh-a-c---6pcemkdun1m.mp3",
+        "nhac/h-a-t-u--th-n-tho-i--qj-8dipk1te.mp3",
+        "nhac/h-a-t-u--thi-n---a-v--song---th-n--i-u---i-hi-p-ost--hu-tpohplq4.mp3",
+        "nhac/h-a-t-u--thu--ban---u--9gze9cq3geq.mp3",
+        "nhac/inuyasha-------to-love-s-end---erhu-cover-by-eliott-tordo.mp3",
+        "nhac/itsumo-nandodemo--spirited-away.mp3",
+        "nhac/minh-vy--chim-tr-ng-m--c-i--n1ucgz-qi8c.mp3",
+        "nhac/n--ho-ng-h-n---ch-u-truy-n-h-ng--whe9t5zghp4.mp3",
+        "nhac/n--ki-p-ve-s-u--cijbfeozapi.mp3",
+        "nhac/n-b-u--n--h-n-v--n--c-m-t--c7ehhtq4qi4.mp3",
+        "nhac/n-tranh--tuy-t-hoa-th-n-ki-m--svnzlw1-usa.mp3",
+        "nhac/s-o--gi-c-m--tr-a--lcocxapsx5i.mp3",
+        "nhac/s-o--hoa-b-ng-l-ng--qrq7e3hyrhm.mp3",
+        "nhac/s-o--ki-m-hi-p-t-nh--pmjdlb4qiig.mp3",
+        "nhac/s-o--raining-cloud-in-the-wind--h6suhdbmsae.mp3",
+        "nhac/saxophone--v--qu---slwjm3s2vrq.mp3",
+
+
+
+    ];
+
+    const volumeSlider = document.getElementById('volume-control');
+
+    // Lắng nghe sự kiện kéo thanh trượt
+    volumeSlider.addEventListener('input', function() {
+        musicPlayer.volume = this.value;
+    });
+
+    let currentTrack = 0;
+    const musicPlayer = document.getElementById('bg-music');
+
+    // Thiết lập âm lượng nhỏ (0.1 là 10%, 0.05 là 5%)
+    musicPlayer.volume = 0.1; 
+
+    function playNextTrack() {
+        if (playlist.length === 0) return;
+        
+        musicPlayer.src = playlist[currentTrack];
+        musicPlayer.play().catch(error => {
+            console.log("Trình duyệt chặn tự động phát, chờ người dùng bấm...");
+        });
+
+        // Chuyển sang bài tiếp theo, nếu hết bài thì quay lại bài đầu (Replay)
+        currentTrack = (currentTrack + 1) % playlist.length;
+    }
+
+    // Khi một bài hát kết thúc, tự động chuyển bài
+    musicPlayer.onended = playNextTrack;
+
+    // QUAN TRỌNG: Kích hoạt nhạc sau lần bấm đầu tiên của người dùng
+    // (Ví dụ khi bạn bấm chọn bài học hoặc chọn từ, nhạc sẽ bắt đầu)
+    document.addEventListener('click', function() {
+        if (musicPlayer.paused) {
+            playNextTrack();
+        }
+    }, { once: true }); // Chỉ chạy một lần duy nhất khi người dùng click lần đầu
+
+
 
     // Chạy app
     window.speechSynthesis.onvoiceschanged = () => {}; 
