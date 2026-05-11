@@ -270,10 +270,13 @@
         userIndices = [];
         
         // Tạo Word Bank
-        let cleanTG = currentItem.tg.replace(/[!?.,"]/g, "");
-        let correctWords = cleanTG.split(/\s+/).filter(w => w.trim().length > 0);
-        
+       
   
+        
+        let cleanTG = currentItem.tg.replace(/[!?.,"]/g, "").replace(/\s+/g, " ").trim();
+        let correctWords = cleanTG.split(" ").filter(w => w.length > 0);
+
+
         let combined = [...correctWords].sort(() => Math.random() - 0.5);
         wordBankWithId = combined.map((w, i) => ({ id: i, text: w }));
 
@@ -330,8 +333,18 @@
 
     // 5. Kiểm tra đáp án
     function checkAnswer(currentString) {
-        let target = currentItem.tg.toLowerCase().replace(/[!?.,"]/g, "").trim();
-        let current = currentString.toLowerCase().trim();
+      
+
+        let target = currentItem.tg.toLowerCase()
+                               .replace(/[!?.,"]/g, "")
+                               .replace(/\s+/g, " ") 
+                               .trim();
+
+        let current = currentString.toLowerCase()
+                               .replace(/\s+/g, " ")
+                               .trim();
+
+
 
         // Nếu đã chọn đủ số từ mà vẫn không khớp đáp án
         if (userIndices.length === wordBankWithId.length && current !== target) {
