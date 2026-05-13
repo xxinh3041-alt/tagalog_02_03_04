@@ -122,6 +122,13 @@
         <select id="lesson-select" onchange="changeLesson()" disabled>
             <option value="">-- Chọn bài học --</option>
         </select>
+
+        <select id="time-limit-select">
+            <option value="10">Thời gian phản xạ: 10 giây</option>
+            <option value="5">Thời gian phản xạ: 5 giây</option>
+        </select>
+
+
     </div>
 
 
@@ -150,6 +157,13 @@
 
     <div style="margin-top: 15px; text-align: center; background: #fff; padding: 10px; border-radius: 12px; border: 1px solid #ddd;">
         <label style="font-weight: bold; color: #4F46E5;">🔊 Âm lượng nhạc:</label>
+       <div style="margin-bottom: 10px;">
+            <label style="font-weight: bold; color: #4F46E5; display: block; margin-bottom: 5px;">🎵 Chọn nhạc nền:</label>
+            <select id="music-select" onchange="changeTrackManual()" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ddd; outline: none;">
+                </select>
+        </div>
+       
+       
         <input type="range" id="volume-control" min="0" max="1" step="0.05" value="0.1" style="width: 100%; cursor: pointer;">
     </div>
 
@@ -331,22 +345,13 @@
         renderUI();
     }
 
-    // 5. Kiểm tra đáp án
-    function checkAnswer(currentString) {
-      
+ 
 
-        let target = currentItem.tg.toLowerCase()
-                               .replace(/[!?.,"]/g, "")
-                               .replace(/\s+/g, " ") 
-                               .trim();
+   
+   function checkAnswer(currentString) {
+        let target = currentItem.tg.toLowerCase().replace(/[!?.,"]/g, "").replace(/\s+/g, " ").trim();
+        let current = currentString.toLowerCase().replace(/\s+/g, " ").trim();
 
-        let current = currentString.toLowerCase()
-                               .replace(/\s+/g, " ")
-                               .trim();
-
-
-
-        // Nếu đã chọn đủ số từ mà vẫn không khớp đáp án
         if (userIndices.length === wordBankWithId.length && current !== target) {
             document.getElementById('result-container').classList.add('wrong');
             document.getElementById('message').innerHTML = `<span style="color:red">❌ SAI THỨ TỰ!</span>`;
@@ -356,19 +361,23 @@
             let elapsed = (Date.now() - startTime) / 1000;
             const msg = document.getElementById('message');
             
-            if (elapsed <= 10.0) {
+            // Lấy giới hạn thời gian từ menu chọn (mặc định là 10 nếu có lỗi)
+            const limit = parseFloat(document.getElementById('time-limit-select').value) || 10.0;
+            
+            if (elapsed <= limit) {
                 msg.innerHTML = `<span style="color:var(--success)">⚡ BẢN NĂNG: ${elapsed.toFixed(2)}s</span>`;
-                lessonPool.shift(); // Xóa khỏi danh sách
+                lessonPool.shift(); 
             } else {
                 msg.innerHTML = `<span style="color:var(--danger)">🐢 CHẬM (${elapsed.toFixed(2)}s) - Làm lại sau</span>`;
-                lessonPool.push(lessonPool.shift()); // Đẩy xuống cuối
+                lessonPool.push(lessonPool.shift()); 
             }
-            
             
             setTimeout(nextQuestion, 500);
         }
     }
-
+    
+   
+   
     // 6. Âm thanh (Logic của bạn)
     function speak(text) {
         window.speechSynthesis.cancel();
@@ -427,6 +436,37 @@
 
     ];
 
+   
+
+
+    function initMusicList() {
+        const musicSelect = document.getElementById('music-select');
+        playlist.forEach((track, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            
+            // Tạo số thứ tự: cộng thêm 1 vì index bắt đầu từ 0, sau đó thêm số 0 ở trước nếu < 10
+            let stt = (index + 1).toString().padStart(2, '0'); 
+            
+            // Lấy tên gốc để bạn vẫn biết đó là bài gì (không bắt buộc, nhưng nên có)
+            let fileName = track.split('/').pop().replace('.mp3', '').split('-').join(' ');
+            
+            // Hiển thị dạng: 01. Tên bài hát
+            option.textContent = `${stt}. ${fileName}`;
+            
+            musicSelect.appendChild(option);
+        });
+    }
+
+
+    // Gọi hàm này để khởi tạo danh sách
+    initMusicList();
+
+
+
+
+
+
     const volumeSlider = document.getElementById('volume-control');
 
     // Lắng nghe sự kiện kéo thanh trượt
@@ -440,20 +480,66 @@
     // Thiết lập âm lượng nhỏ (0.1 là 10%, 0.05 là 5%)
     musicPlayer.volume = 0.1; 
 
+
+
+
+
+
+        // Hàm phát một bài cụ thể dựa trên vị trí (index)
+ 
+
+    function playTrack(index) {
+        currentTrack = index;
+        musicPlayer.src = playlist[currentTrack];
+        
+        // Đợi nhạc load xong dữ liệu rồi mới nhảy đến giây thứ 10
+        musicPlayer.onloadedmetadata = function() {
+            musicPlayer.currentTime = 10; 
+            musicPlayer.play().catch(e => console.log("Chờ tương tác..."));
+        };
+
+        document.getElementById('music-select').value = currentTrack;
+    }
+
+
+
+
+    // Hàm khi bạn tự tay chọn trên Menu
+    function changeTrackManual() {
+        const selectedIndex = parseInt(document.getElementById('music-select').value);
+        playTrack(selectedIndex);
+    }
+
+    // Cập nhật lại hàm tự động chuyển bài cũ
     function playNextTrack() {
         if (playlist.length === 0) return;
-        
-        musicPlayer.src = playlist[currentTrack];
-        musicPlayer.play().catch(error => {
-            console.log("Trình duyệt chặn tự động phát, chờ người dùng bấm...");
-        });
-
-        // Chuyển sang bài tiếp theo, nếu hết bài thì quay lại bài đầu (Replay)
+        playTrack(currentTrack);
         currentTrack = (currentTrack + 1) % playlist.length;
     }
 
-    // Khi một bài hát kết thúc, tự động chuyển bài
+
+
+
+
+
+ 
+
+    // Tự động đổi bài sau 30 giây phát (giây thứ 10 đến giây thứ 40)
+    musicPlayer.ontimeupdate = function() {
+        // Nếu thời gian hiện tại lớn hơn hoặc bằng 40 giây (10s đầu + 30s phát)
+        if (musicPlayer.currentTime >= 40) {
+            currentTrack = (currentTrack + 1) % playlist.length;
+            playTrack(currentTrack);
+        }
+    };
+
+    // Vẫn giữ onended để phòng trường hợp bài hát ngắn hơn 40 giây
     musicPlayer.onended = playNextTrack;
+
+
+
+
+
 
     // QUAN TRỌNG: Kích hoạt nhạc sau lần bấm đầu tiên của người dùng
     // (Ví dụ khi bạn bấm chọn bài học hoặc chọn từ, nhạc sẽ bắt đầu)
