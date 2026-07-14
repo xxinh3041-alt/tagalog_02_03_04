@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tagalog Instinct Pro - Dictation Edition</title>
+    <title>Tagalog Instinct Pro - Dictation 100%</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -31,13 +31,10 @@
         }
 
         .header { margin-bottom: 15px; text-align: center; }
-        .status-text { color: var(--danger); font-weight: 700; font-size: 18px; margin-bottom: 5px; }
+        .status-text { color: var(--primary); font-weight: 700; font-size: 18px; margin-bottom: 5px; }
         
-        /* Cải tiến thanh tiến độ thời gian */
         .progress-container { width: 100%; height: 12px; background: #E2E8F0; border-radius: 10px; overflow: hidden; margin-bottom: 5px; }
-        #progress-bar { width: 0%; height: 100%; background: linear-gradient(to right, #059669, #10B981); transition: width 0.3s; }
-        
-        #timer-bar { width: 100%; height: 6px; background: var(--danger); transition: width 0.1s linear; }
+        #progress-bar { width: 0%; height: 100%; background: linear-gradient(to right, #4F46E5, #10B981); transition: width 0.3s; }
 
         .vn-card {
             background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
@@ -46,7 +43,7 @@
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-bottom: 15px;
         }
 
-        /* Khung nhập liệu (Thay cho Word Bank cũ) */
+        /* Khung nhập liệu phục vụ gõ chính tả */
         .input-box {
             width: 100%; box-sizing: border-box; padding: 15px; 
             font-size: 20px; font-weight: 700; color: #1E40AF;
@@ -99,17 +96,12 @@
         <div class="progress-container">
             <div id="progress-bar"></div>
         </div>
-        <div class="progress-container" style="height: 6px;">
-            <div id="timer-bar"></div>
-        </div>
     </div>
 
     <div id="question-text" class="vn-card">...</div>
 
-    <!-- Ô nhập câu trả lời -->
     <input type="text" id="user-typing-input" class="input-box" placeholder="Nghe và gõ lại câu tại đây..." autocomplete="off" autofocus>
 
-    <!-- Vùng hiện Gợi ý (Hint) -->
     <div id="hint-display" class="hint-box"></div>
 
     <div class="controls">
@@ -132,11 +124,6 @@
     let lessonPool = [];
     let currentItem = null;
     let totalInLesson = 0;
-    
-    // Quản lý thời gian câu hỏi
-    let timerInterval = null;
-    const TIME_LIMIT = 20; // Giới hạn 20 giây cho mỗi câu theo yêu cầu
-    let timeLeft = TIME_LIMIT;
 
     async function init() {
         const files = [
@@ -206,14 +193,12 @@
     function changeLesson() {
         const selected = document.getElementById('lesson-select').value;
         lessonPool = allData.filter(d => d.lesson === selected);
-        // Trộn ngẫu nhiên câu hỏi
         lessonPool.sort(() => Math.random() - 0.5);
         totalInLesson = lessonPool.length;
         nextQuestion();
     }
 
     function nextQuestion() {
-        clearInterval(timerInterval);
         document.getElementById('hint-display').style.display = "none";
         document.getElementById('user-typing-input').value = "";
         document.getElementById('message').innerText = "";
@@ -226,7 +211,6 @@
 
         currentItem = lessonPool[0];
         
-        // Hiển thị UI ban đầu
         document.getElementById('question-text').innerText = currentItem.vn;
         const done = totalInLesson - lessonPool.length;
         document.getElementById('status').innerText = `Đã xong: ${done}/${totalInLesson} — CÒN: ${lessonPool.length}`;
@@ -234,74 +218,17 @@
 
         speak(currentItem.tg);
         document.getElementById('user-typing-input').focus();
-        
-        // Kích hoạt bộ đếm ngược 20 giây
-        startTimer();
     }
 
-    // Bộ đếm thời gian phản xạ 20 giây
-    function startTimer() {
-        timeLeft = TIME_LIMIT;
-        document.getElementById('timer-bar').style.width = "100%";
-        
-        timerInterval = setInterval(() => {
-            timeLeft -= 0.1;
-            let percent = (timeLeft / TIME_LIMIT) * 100;
-            document.getElementById('timer-bar').style.width = percent + "%";
-
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                // Hết giờ -> Chuyển câu này xuống cuối danh sách để luyện lại
-                document.getElementById('message').innerHTML = `<span style="color:var(--danger)">🐢 HẾT GIỜ (20s) - Làm lại sau!</span>`;
-                lessonPool.push(lessonPool.shift());
-                setTimeout(nextQuestion, 2000);
-            }
-        }, 100);
-    }
-
-    // Hàm chuẩn hóa chuỗi: Loại bỏ toàn bộ khoảng cách thừa và ký tự đặc biệt theo yêu cầu số 5
+    // Hàm làm sạch chuỗi: Giữ lại chữ cái mặt chữ, loại bỏ dấu chấm câu nhiễu
     function cleanText(text) {
         return text.toLowerCase()
-            .replace(/[!?.,"\-\(\)\[\]\{\};:_']/g, "") // Xóa sạch ký tự đặc biệt
-            .replace(/\s+/g, " ")                       // Gom nhiều dấu cách thành 1
+            .replace(/[!?.,"\-\(\)\[\]\{\};:_']/g, "") 
+            .replace(/\s+/g, " ")                       
             .trim();
     }
 
-    // Hàm tính toán độ tương đồng chuỗi theo thuật toán Levenshtein Distance (để tính tỷ lệ % đúng)
-    function getSimilarity(s1, s2) {
-        let longer = s1;
-        let shorter = s2;
-        if (s1.length < s2.length) {
-            longer = s2;
-            shorter = s1;
-        }
-        let longerLength = longer.length;
-        if (longerLength === 0) return 1.0;
-        return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
-    }
-
-    function editDistance(s1, s2) {
-        let costs = new Array();
-        for (let i = 0; i <= s1.length; i++) {
-            let lastValue = i;
-            for (let j = 0; j <= s2.length; j++) {
-                if (i == 0) costs[j] = j;
-                else {
-                    if (j > 0) {
-                        let newValue = costs[j - 1];
-                        if (s1.charAt(i - 1) != s2.charAt(j - 1))
-                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-                        costs[j - 1] = lastValue;
-                        lastValue = newValue;
-                    }
-                }
-            }
-            if (i > 0) costs[s2.length] = lastValue;
-        }
-        return costs[s2.length];
-    }
-
-    // Kiểm tra câu trả lời của người dùng
+    // Tự động kiểm tra trực tiếp khi đang gõ (Khớp chuẩn 100% mới qua câu)
     function checkAnswer() {
         let userText = document.getElementById('user-typing-input').value;
         let targetText = currentItem.tg;
@@ -309,46 +236,37 @@
         let cleanUser = cleanText(userText);
         let cleanTarget = cleanText(targetText);
 
-        // Tính tỷ lệ chính xác
-        let similarity = getSimilarity(cleanUser, cleanTarget);
-        let accuracyPercent = similarity * 100;
-
-        // Yêu cầu số 7: Chấp nhận sai sót, chỉ cần đúng từ 80% trở lên là đạt
-        if (accuracyPercent >= 80) {
-            clearInterval(timerInterval);
-            speak(currentItem.tg); // Phát âm thanh lại chuẩn để ghi nhớ
-            document.getElementById('message').innerHTML = `<span style="color:var(--success)">⚡ CHÍNH XÁC (${accuracyPercent.toFixed(0)}% đúng)!</span>`;
-            lessonPool.shift(); // Xóa khỏi danh sách câu cần làm
-            setTimeout(nextQuestion, 1500);
+        // BẮT BUỘC KHỚP NHAU HOÀN TOÀN 100%
+        if (cleanUser === cleanTarget) {
+            speak(currentItem.tg); 
+            document.getElementById('message').innerHTML = `<span style="color:var(--success)">⚡ CHÍNH XÁC 100%!</span>`;
+            lessonPool.shift(); 
+            setTimeout(nextQuestion, 1200);
         }
     }
 
-    // Lắng nghe sự kiện gõ phím trực tiếp (Tự động nhận diện khi người dùng gõ xong đạt 80%)
     document.getElementById('user-typing-input').addEventListener('input', checkAnswer);
 
-    // Kiểm tra thủ công khi bấm nút Bấm kiểm tra hoặc nhấn Enter
+    // Bấm nút kiểm tra thủ công hoặc bấm phím Enter
     function manualCheck() {
         let userText = document.getElementById('user-typing-input').value;
         let cleanUser = cleanText(userText);
         let cleanTarget = cleanText(currentItem.tg);
-        let accuracyPercent = getSimilarity(cleanUser, cleanTarget) * 100;
 
-        if (accuracyPercent >= 80) {
+        if (cleanUser === cleanTarget) {
             checkAnswer();
         } else {
-            document.getElementById('message').innerHTML = `<span style="color:var(--danger)">❌ CHƯA ĐẠT (${accuracyPercent.toFixed(0)}% đúng). Hãy thử lại hoặc dùng Hint!</span>`;
+            document.getElementById('message').innerHTML = `<span style="color:var(--danger)">❌ Chưa chính xác. Hãy kiểm tra lại chính tả hoặc dùng Hint!</span>`;
         }
     }
 
-    // Nhấn Enter trong ô nhập cũng kích hoạt kiểm tra
     document.getElementById('user-typing-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') { manualCheck(); }
     });
 
-    // Yêu cầu số 6: Mở Hint xem câu gốc khi bí
     function showHint() {
         let hintBox = document.getElementById('hint-display');
-        hintBox.innerText = `💡 Gợi ý: ${currentItem.tg}`;
+        hintBox.innerText = `💡 Gợi ý câu gốc: ${currentItem.tg}`;
         hintBox.style.display = "block";
         document.getElementById('user-typing-input').focus();
     }
@@ -436,7 +354,7 @@
         musicPlayer.src = playlist[currentTrack];
         musicPlayer.onloadedmetadata = function() {
             musicPlayer.currentTime = 10; 
-            musicPlayer.play().catch(e => console.log("Chờ tương tác nhạc..."));
+            musicPlayer.play().catch(e => console.log("Chờ tương tác..."));
         };
         document.getElementById('music-select').value = currentTrack;
     }
