@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tagalog Dictation Pro</title>
+    <title>Tagalog Instinct Pro - Dictation Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -24,10 +24,20 @@
 
         .app-container { width: 100%; max-width: 500px; }
 
+        .selector-area { margin-bottom: 20px; width: 100%; }
+        select {
+            width: 100%; padding: 12px; border-radius: 12px;
+            border: 2px solid #E2E8F0; font-size: 16px; outline: none; margin-bottom: 10px;
+        }
+
         .header { margin-bottom: 15px; text-align: center; }
-        .status-text { color: var(--primary); font-weight: 700; font-size: 18px; margin-bottom: 5px; }
-        .progress-container { width: 100%; height: 12px; background: #E2E8F0; border-radius: 10px; overflow: hidden; }
-        #progress-bar { width: 0%; height: 100%; background: linear-gradient(to right, #4F46E5, #10B981); transition: width 0.3s; }
+        .status-text { color: var(--danger); font-weight: 700; font-size: 18px; margin-bottom: 5px; }
+        
+        /* Cải tiến thanh tiến độ thời gian */
+        .progress-container { width: 100%; height: 12px; background: #E2E8F0; border-radius: 10px; overflow: hidden; margin-bottom: 5px; }
+        #progress-bar { width: 0%; height: 100%; background: linear-gradient(to right, #059669, #10B981); transition: width 0.3s; }
+        
+        #timer-bar { width: 100%; height: 6px; background: var(--danger); transition: width 0.1s linear; }
 
         .vn-card {
             background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
@@ -36,25 +46,34 @@
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-bottom: 15px;
         }
 
-        select {
-            width: 100%;
-            padding: 12px;
-            border-radius: 12px;
-            border: 2px solid #E2E8F0;
-            font-size: 16px;
-            outline: none;
-            margin-bottom: 10px;
+        /* Khung nhập liệu (Thay cho Word Bank cũ) */
+        .input-box {
+            width: 100%; box-sizing: border-box; padding: 15px; 
+            font-size: 20px; font-weight: 700; color: #1E40AF;
+            border: 3px solid #6366F1; border-radius: 15px;
+            outline: none; text-align: center; margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .input-box:focus { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
+
+        /* Vùng hiển thị Gợi ý (Hint) */
+        .hint-box {
+            background: #FEF3C7; border: 2px dashed #F59E0B; border-radius: 12px;
+            padding: 12px; font-size: 18px; font-weight: 700; color: #B45309;
+            text-align: center; margin-bottom: 15px; display: none;
         }
 
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 10px; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; width: 100%; }
         .ctrl-btn {
             padding: 15px; border-radius: 12px; border: none; font-weight: 700;
-            color: white; font-size: 16px; cursor: pointer;
+            color: white; font-size: 16px; cursor: pointer; text-align: center;
         }
-        .btn-reset { background: #94A3B8; }
-        .btn-speak { background: #4F46E5; }
+        .btn-check { background: var(--success); }
+        .btn-hint { background: #F59E0B; }
+        .btn-speak { background: var(--primary); }
 
-        #message { margin-top: 15px; font-weight: 700; text-align: center; min-height: 30px; font-size: 18px; }
+        .music-area { margin-top: 15px; text-align: center; background: #fff; padding: 10px; border-radius: 12px; border: 1px solid #ddd; }
+        #message { margin-top: 15px; font-weight: 700; text-align: center; height: 30px; font-size: 18px; }
     </style>
 </head>
 <body>
@@ -62,9 +81,7 @@
 <audio id="bg-music" style="display:none;"></audio>
 
 <div class="app-container">
-
     <div class="selector-area">
-        <!-- ĐÃ SỬA LỖI THẺ ĐÓNG SELECT TẠI ĐÂY -->
         <select id="book-select" onchange="updateLessonList()">
             <option value="">-- Chọn Sách --</option>
             <option value="Sách 02">Sách Tagalog 02</option>
@@ -72,7 +89,6 @@
             <option value="Sách 04">Sách Tagalog 04</option>
             <option value="Sách 50">Sách 50 Chủ Đề</option>
         </select>
-
         <select id="lesson-select" onchange="changeLesson()" disabled>
             <option value="">-- Chọn bài học --</option>
         </select>
@@ -83,35 +99,28 @@
         <div class="progress-container">
             <div id="progress-bar"></div>
         </div>
+        <div class="progress-container" style="height: 6px;">
+            <div id="timer-bar"></div>
+        </div>
     </div>
 
-    <!-- Hiển thị nghĩa tiếng Việt để làm điểm tựa -->
-    <div id="question-text" class="vn-card">Mời chọn bài học</div>
+    <div id="question-text" class="vn-card">...</div>
 
-    <!-- Ô nhập câu trả lời của người dùng -->
-    <textarea id="user-input-box" placeholder="Nghe và gõ lại câu Tagalog tại đây..." disabled
-            style="width: 100%; height: 90px; font-size: 18px; font-weight: 700; border: 3px solid #6366F1; border-radius: 15px; padding: 10px; box-sizing: border-box; resize: none; outline: none; margin-bottom: 10px;"></textarea>
+    <!-- Ô nhập câu trả lời -->
+    <input type="text" id="user-typing-input" class="input-box" placeholder="Nghe và gõ lại câu tại đây..." autocomplete="off" autofocus>
 
-    <!-- Thanh đếm ngược thời gian 20 giây -->
-    <div id="timer-text" style="text-align: center; color: #EF4444; font-weight: bold; font-size: 20px; margin-bottom: 10px;">Thời gian: 20s</div>
-
-    <!-- Phần tính năng HINT (Gợi ý câu gốc) -->
-    <div style="text-align: center; margin-bottom: 15px;">
-        <button id="hint-btn" onclick="showHint()" style="background: #F59E0B; color: white; padding: 8px 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">💡 Xem Gợi Ý (Hint)</button>
-        <p id="hint-text" style="display: none; color: #4B5563; font-style: italic; font-weight: 700; margin-top: 8px; font-size: 18px; background: #FEF3C7; padding: 8px; border-radius: 8px;"></p>
-    </div>
+    <!-- Vùng hiện Gợi ý (Hint) -->
+    <div id="hint-display" class="hint-box"></div>
 
     <div class="controls">
-        <button class="ctrl-btn btn-reset" onclick="resetCurrent()">🔄 Xóa gõ lại</button>
-        <button class="ctrl-btn btn-speak" onclick="speakCurrent()">🔊 Nghe Lại</button>
+        <button class="ctrl-btn btn-hint" onclick="showHint()">💡 Gợi ý (Hint)</button>
+        <button class="ctrl-btn btn-check" onclick="manualCheck()">✔ Kiểm tra</button>
+        <button class="ctrl-btn btn-speak" onclick="speakCurrent()">🔊 Nghe lại</button>
     </div>
 
-    <div style="margin-top: 15px; text-align: center; background: #fff; padding: 10px; border-radius: 12px; border: 1px solid #ddd;">
-        <div style="margin-bottom: 10px;">
-            <label style="font-weight: bold; color: #4F46E5; display: block; margin-bottom: 5px;">🎵 Nhạc nền phát nền:</label>
-            <select id="music-select" onchange="changeTrackManual()" style="margin-bottom: 5px;"></select>
-        </div>
-        <label style="font-weight: bold; color: #4F46E5;">🔊 Âm lượng:</label>
+    <div class="music-area">
+        <label style="font-weight: bold; color: #4F46E5; display: block; margin-bottom: 5px;">🎵 Chọn nhạc nền:</label>
+        <select id="music-select" onchange="changeTrackManual()"></select>
         <input type="range" id="volume-control" min="0" max="1" step="0.05" value="0.1" style="width: 100%; cursor: pointer;">
     </div>
 
@@ -122,12 +131,13 @@
     let allData = [];
     let lessonPool = [];
     let currentItem = null;
-    let startTime = 0;
     let totalInLesson = 0;
+    
+    // Quản lý thời gian câu hỏi
     let timerInterval = null;
-    let currentCountdown = 20;
+    const TIME_LIMIT = 20; // Giới hạn 20 giây cho mỗi câu theo yêu cầu
+    let timeLeft = TIME_LIMIT;
 
-    // 1. Tải dữ liệu Excel
     async function init() {
         const files = [
             { name: 'sach_Tagalog_02.xlsx', label: 'Sách 02' },
@@ -170,7 +180,6 @@
         document.getElementById('status').innerText = "Đã tải xong dữ liệu. Mời chọn sách!";
     }
 
-    // 2. Cập nhật danh sách bài học
     function updateLessonList() {
         const selectedBook = document.getElementById('book-select').value;
         const lessonSelect = document.getElementById('lesson-select');
@@ -194,143 +203,154 @@
         }
     }
 
-    // 3. Chọn bài học
     function changeLesson() {
         const selected = document.getElementById('lesson-select').value;
-        if(!selected) return;
         lessonPool = allData.filter(d => d.lesson === selected);
+        // Trộn ngẫu nhiên câu hỏi
+        lessonPool.sort(() => Math.random() - 0.5);
         totalInLesson = lessonPool.length;
         nextQuestion();
     }
 
-    // 4. Chuyển câu hỏi & Kích hoạt đếm ngược 20s
     function nextQuestion() {
+        clearInterval(timerInterval);
+        document.getElementById('hint-display').style.display = "none";
+        document.getElementById('user-typing-input').value = "";
+        document.getElementById('message').innerText = "";
+
         if (lessonPool.length === 0) {
             document.getElementById('question-text').innerText = "🎉 HOÀN THÀNH!";
             document.getElementById('status').innerText = "Tất cả đã đạt bản năng!";
-            document.getElementById('user-input-box').disabled = true;
-            clearInterval(timerInterval);
             return;
         }
 
         currentItem = lessonPool[0];
         
-        const inputBox = document.getElementById('user-input-box');
-        inputBox.value = "";
-        inputBox.disabled = false;
-        inputBox.focus();
-        
-        document.getElementById('hint-text').style.display = "none";
-        document.getElementById('hint-text').innerText = currentItem.tg; 
-        document.getElementById('message').innerText = "";
-
+        // Hiển thị UI ban đầu
+        document.getElementById('question-text').innerText = currentItem.vn;
         const done = totalInLesson - lessonPool.length;
-        document.getElementById('status').innerText = `Đã xong: ${done}/${totalInLesson} — Còn lại: ${lessonPool.length}`;
+        document.getElementById('status').innerText = `Đã xong: ${done}/${totalInLesson} — CÒN: ${lessonPool.length}`;
         document.getElementById('progress-bar').style.width = (done / totalInLesson * 100) + "%";
 
-        // Đọc từ phát âm ngay lập tức
         speak(currentItem.tg);
+        document.getElementById('user-typing-input').focus();
         
-        startTime = Date.now();
+        // Kích hoạt bộ đếm ngược 20 giây
         startTimer();
     }
 
-    // 5. Bộ đếm ngược 20 giây chuẩn chỉnh
+    // Bộ đếm thời gian phản xạ 20 giây
     function startTimer() {
-        clearInterval(timerInterval);
-        currentCountdown = 20;
-        document.getElementById('timer-text').innerText = `Thời gian: ${currentCountdown}s`;
-        document.getElementById('timer-text').style.color = "#EF4444";
+        timeLeft = TIME_LIMIT;
+        document.getElementById('timer-bar').style.width = "100%";
         
         timerInterval = setInterval(() => {
-            currentCountdown--;
-            document.getElementById('timer-text').innerText = `Thời gian: ${currentCountdown}s`;
-            
-            if (currentCountdown <= 0) {
+            timeLeft -= 0.1;
+            let percent = (timeLeft / TIME_LIMIT) * 100;
+            document.getElementById('timer-bar').style.width = percent + "%";
+
+            if (timeLeft <= 0) {
                 clearInterval(timerInterval);
-                document.getElementById('user-input-box').disabled = true;
-                document.getElementById('timer-text').innerText = "⏱ HẾT GIỜ!";
-                document.getElementById('message').innerHTML = `<span style="color:red">Hết 20s! Từ này sẽ được học lại ở cuối bài.</span>`;
-                
-                // Đẩy xuống cuối mảng học lại
+                // Hết giờ -> Chuyển câu này xuống cuối danh sách để luyện lại
+                document.getElementById('message').innerHTML = `<span style="color:var(--danger)">🐢 HẾT GIỜ (20s) - Làm lại sau!</span>`;
                 lessonPool.push(lessonPool.shift());
-                setTimeout(nextQuestion, 2500);
+                setTimeout(nextQuestion, 2000);
             }
-        }, 1000);
+        }, 100);
     }
 
-    // Lắng nghe sự kiện gõ chữ trực tiếp
-    document.getElementById('user-input-box').addEventListener('input', function(e) {
-        if(!currentItem) return;
-        let userText = e.target.value;
-        checkAnswerDictation(userText);
-    });
-
-    // 6. Xử lý làm sạch chuỗi: Loại bỏ chấm, phẩy, kí hiệu, khoảng cách thừa
-    function cleanString(str) {
-        return str.toLowerCase()
-                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"'’]/g, "") // Xóa mọi ký tự đặc biệt
-                .replace(/\s+/g, " ")                            // Thu gọn khoảng trắng thừa
-                .trim();
+    // Hàm chuẩn hóa chuỗi: Loại bỏ toàn bộ khoảng cách thừa và ký tự đặc biệt theo yêu cầu số 5
+    function cleanText(text) {
+        return text.toLowerCase()
+            .replace(/[!?.,"\-\(\)\[\]\{\};:_']/g, "") // Xóa sạch ký tự đặc biệt
+            .replace(/\s+/g, " ")                       // Gom nhiều dấu cách thành 1
+            .trim();
     }
 
-    // 7. Thuật toán Levenshtein tính độ lệch chuẩn để chấp nhận đúng từ 80% trở lên
-    function getLevenshteinDistance(a, b) {
-        const matrix = [];
-        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-        for (let i = 1; i <= b.length; i++) {
-            for (let j = 1; j <= a.length; j++) {
-                if (b.charAt(i - 1) === a.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1, // Thay thế
-                        matrix[i][j - 1] + 1,     // Chèn
-                        matrix[i - 1][j] + 1      // Xóa
-                    );
+    // Hàm tính toán độ tương đồng chuỗi theo thuật toán Levenshtein Distance (để tính tỷ lệ % đúng)
+    function getSimilarity(s1, s2) {
+        let longer = s1;
+        let shorter = s2;
+        if (s1.length < s2.length) {
+            longer = s2;
+            shorter = s1;
+        }
+        let longerLength = longer.length;
+        if (longerLength === 0) return 1.0;
+        return (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
+    }
+
+    function editDistance(s1, s2) {
+        let costs = new Array();
+        for (let i = 0; i <= s1.length; i++) {
+            let lastValue = i;
+            for (let j = 0; j <= s2.length; j++) {
+                if (i == 0) costs[j] = j;
+                else {
+                    if (j > 0) {
+                        let newValue = costs[j - 1];
+                        if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                        costs[j - 1] = lastValue;
+                        lastValue = newValue;
+                    }
                 }
             }
+            if (i > 0) costs[s2.length] = lastValue;
         }
-        return matrix[b.length][a.length];
+        return costs[s2.length];
     }
 
-    // 8. Kiểm tra đáp án chính xác song song khi người dùng đang gõ
-    function checkAnswerDictation(userText) {
-        let targetClean = cleanString(currentItem.tg);
-        let userClean = cleanString(userText);
+    // Kiểm tra câu trả lời của người dùng
+    function checkAnswer() {
+        let userText = document.getElementById('user-typing-input').value;
+        let targetText = currentItem.tg;
 
-        if (targetClean.length === 0) return;
+        let cleanUser = cleanText(userText);
+        let cleanTarget = cleanText(targetText);
 
-        let distance = getLevenshteinDistance(userClean, targetClean);
-        let maxLength = Math.max(userClean.length, targetClean.length);
-        let accuracy = ((maxLength - distance) / maxLength) * 100;
+        // Tính tỷ lệ chính xác
+        let similarity = getSimilarity(cleanUser, cleanTarget);
+        let accuracyPercent = similarity * 100;
 
-        // Nếu người dùng đã gõ độ dài tương đối ổn và đạt độ chính xác từ 80% trở lên
-        if (userClean.length >= targetClean.length * 0.8 && accuracy >= 80) {
-            clearInterval(timerInterval); // Dừng đếm ngược ngay lập tức
-            document.getElementById('user-input-box').disabled = true;
-            
-            let elapsed = (Date.now() - startTime) / 1000;
-            document.getElementById('timer-text').innerHTML = `<span style="color: #10B981">🎉 ĐÚNG (${accuracy.toFixed(0)}%) - ${elapsed.toFixed(1)}s</span>`;
-            
-            // Đạt điều kiện -> Xóa câu này khỏi danh sách bài hiện tại
-            lessonPool.shift();
+        // Yêu cầu số 7: Chấp nhận sai sót, chỉ cần đúng từ 80% trở lên là đạt
+        if (accuracyPercent >= 80) {
+            clearInterval(timerInterval);
+            speak(currentItem.tg); // Phát âm thanh lại chuẩn để ghi nhớ
+            document.getElementById('message').innerHTML = `<span style="color:var(--success)">⚡ CHÍNH XÁC (${accuracyPercent.toFixed(0)}% đúng)!</span>`;
+            lessonPool.shift(); // Xóa khỏi danh sách câu cần làm
             setTimeout(nextQuestion, 1500);
         }
     }
 
-    // 9. Tính năng xem Hint (Gợi ý)
-    function showHint() {
-        const hintText = document.getElementById('hint-text');
-        hintText.style.display = (hintText.style.display === "none") ? "block" : "none";
-        document.getElementById('user-input-box').focus();
+    // Lắng nghe sự kiện gõ phím trực tiếp (Tự động nhận diện khi người dùng gõ xong đạt 80%)
+    document.getElementById('user-typing-input').addEventListener('input', checkAnswer);
+
+    // Kiểm tra thủ công khi bấm nút Bấm kiểm tra hoặc nhấn Enter
+    function manualCheck() {
+        let userText = document.getElementById('user-typing-input').value;
+        let cleanUser = cleanText(userText);
+        let cleanTarget = cleanText(currentItem.tg);
+        let accuracyPercent = getSimilarity(cleanUser, cleanTarget) * 100;
+
+        if (accuracyPercent >= 80) {
+            checkAnswer();
+        } else {
+            document.getElementById('message').innerHTML = `<span style="color:var(--danger)">❌ CHƯA ĐẠT (${accuracyPercent.toFixed(0)}% đúng). Hãy thử lại hoặc dùng Hint!</span>`;
+        }
     }
 
-    function resetCurrent() {
-        const inputBox = document.getElementById('user-input-box');
-        inputBox.value = "";
-        inputBox.focus();
+    // Nhấn Enter trong ô nhập cũng kích hoạt kiểm tra
+    document.getElementById('user-typing-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') { manualCheck(); }
+    });
+
+    // Yêu cầu số 6: Mở Hint xem câu gốc khi bí
+    function showHint() {
+        let hintBox = document.getElementById('hint-display');
+        hintBox.innerText = `💡 Gợi ý: ${currentItem.tg}`;
+        hintBox.style.display = "block";
+        document.getElementById('user-typing-input').focus();
     }
 
     function speak(text) {
@@ -347,13 +367,44 @@
 
     function speakCurrent() { if(currentItem) speak(currentItem.tg); }
 
-    // --- QUẢN LÝ NHẠC NỀN ---
+    // --- CẤU HÌNH NHẠC NỀN ---
     const playlist = [
         "nhac/4k----------ost-----------------cover-by.mp3",
         "nhac/always-with-me---spirited-away-----------itsumo-nando-demo.mp3",
         "nhac/guitar--ch--tr-n-th-ng-n-m--11pkfuocpgq.mp3",
         "nhac/guitar--ph--xa--xcbp9foq6wg.mp3",
-        "nhac/guitar--scraborough-fair--or98j4but-u.mp3"
+        "nhac/guitar--scraborough-fair--or98j4but-u.mp3",
+        "nhac/guitar--t-i-nh--em-c-ng-nh--t--l-m-th-a-m-n-n-i-c----n--ago3f7ajq-i.mp3",
+        "nhac/guitar--t-nh-kh-c-v-ng--jtuasvfd2yg.mp3",
+        "nhac/h-a-t-u----m---m-n-m-m--ph---umo6h77rz3u.mp3",
+        "nhac/h-a-t-u--999---a-h-ng--w-p-6ls3uag.mp3",
+        "nhac/h-a-t-u--b--c-ch-n-l--loi--vhxey-3a6je.mp3",
+        "nhac/h-a-t-u--khi-c----n-em-nh--ai--zyzovk-adna.mp3",
+        "nhac/h-a-t-u--l-i-l-m----qua---cu-c-ch-i-v--ngh-a--l7h7debsezi.mp3",
+        "nhac/h-a-t-u--m-a-th-y-tinh--sps7jiy9-nc.mp3",
+        "nhac/h-a-t-u--n--h-n-bi-t-ly---take-me-to-your-heart--v4l3vfklwwc.mp3",
+        "nhac/h-a-t-u--ng--i-t-nh-m-a---ng--kl4jmmttiko.mp3",
+        "nhac/h-a-t-u--ng-i-sao-hi-u-l-ng-em--cc6fw-obtp4.mp3",
+        "nhac/h-a-t-u--s--thanh-hoa--l4vpvxsbxrc.mp3",
+        "nhac/h-a-t-u--t-nh---n-c-i--knikz-vgttw.mp3",
+        "nhac/h-a-t-u--t-nh-nhi-n---splhdsc9dhw.mp3",
+        "nhac/h-a-t-u--t-nh-thi-n-thu--3xw8wwfjd-i.mp3",
+        "nhac/h-a-t-u--t-nh-x-a-ngh-a-c---6pcemkdun1m.mp3",
+        "nhac/h-a-t-u--th-n-tho-i--qj-8dipk1te.mp3",
+        "nhac/h-a-t-u--thi-n---a-v--song---th-n--i-u---i-hi-p-ost--hu-tpohplq4.mp3",
+        "nhac/h-a-t-u--thu--ban---u--9gze9cq3geq.mp3",
+        "nhac/inuyasha-------to-love-s-end---erhu-cover-by-eliott-tordo.mp3",
+        "nhac/itsumo-nandodemo--spirited-away.mp3",
+        "nhac/minh-vy--chim-tr-ng-m--c-i--n1ucgz-qi8c.mp3",
+        "nhac/n--ho-ng-h-n---ch-u-truy-n-h-ng--whe9t5zghp4.mp3",
+        "nhac/n--ki-p-ve-s-u--cijbfeozapi.mp3",
+        "nhac/n-b-u--n--h-n-v--n--c-m-t--c7ehhtq4qi4.mp3",
+        "nhac/n-tranh--tuy-t-hoa-th-n-ki-m--svnzlw1-usa.mp3",
+        "nhac/s-o--gi-c-m--tr-a--lcocxapsx5i.mp3",
+        "nhac/s-o--hoa-b-ng-l-ng--qrq7e3hyrhm.mp3",
+        "nhac/s-o--ki-m-hi-p-t-nh--pmjdlb4qiig.mp3",
+        "nhac/s-o--raining-cloud-in-the-wind--h6suhdbmsae.mp3",
+        "nhac/saxophone--v--qu---slwjm3s2vrq.mp3"
     ];
 
     function initMusicList() {
@@ -363,7 +414,7 @@
             option.value = index;
             let stt = (index + 1).toString().padStart(2, '0'); 
             let fileName = track.split('/').pop().replace('.mp3', '').split('-').join(' ');
-            option.textContent = `${stt}. ${fileName.substring(0, 30)}...`;
+            option.textContent = `${stt}. ${fileName}`;
             musicSelect.appendChild(option);
         });
     }
@@ -379,13 +430,13 @@
     });
 
     let currentTrack = 0;
+
     function playTrack(index) {
-        if(playlist.length === 0) return;
         currentTrack = index;
         musicPlayer.src = playlist[currentTrack];
         musicPlayer.onloadedmetadata = function() {
             musicPlayer.currentTime = 10; 
-            musicPlayer.play().catch(e => console.log("Chờ tương tác kích hoạt nhạc..."));
+            musicPlayer.play().catch(e => console.log("Chờ tương tác nhạc..."));
         };
         document.getElementById('music-select').value = currentTrack;
     }
@@ -396,17 +447,22 @@
     }
 
     function playNextTrack() {
-        currentTrack = (currentTrack + 1) % playlist.length;
+        if (playlist.length === 0) return;
         playTrack(currentTrack);
+        currentTrack = (currentTrack + 1) % playlist.length;
     }
 
     musicPlayer.ontimeupdate = function() {
-        if (musicPlayer.currentTime >= 40) { playNextTrack(); }
+        if (musicPlayer.currentTime >= 40) {
+            currentTrack = (currentTrack + 1) % playlist.length;
+            playTrack(currentTrack);
+        }
     };
+
     musicPlayer.onended = playNextTrack;
 
     document.addEventListener('click', function() {
-        if (musicPlayer.paused) { playTrack(0); }
+        if (musicPlayer.paused) { playNextTrack(); }
     }, { once: true });
 
     window.speechSynthesis.onvoiceschanged = () => {}; 
